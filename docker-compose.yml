@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  mathapi:
+    build:
+      context: ./API
+      dockerfile: Dockerfile
+    container_name: mathapi
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+    ports:
+      - "5000:80"
+    networks:
+      - mathnet
+
+  mathapiclient:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    container_name: mathapiclient
+    depends_on:
+      - mathapi
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      API_BASE_URL: http://mathapi
+    ports:
+      - "5001:80"
+    networks:
+      - mathnet
+
+networks:
+  mathnet:

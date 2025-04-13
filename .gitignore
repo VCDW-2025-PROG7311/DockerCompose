@@ -1,0 +1,58 @@
+# .NET build output
+**/bin/
+**/obj/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+
+# VS Code
+.vscode/
+
+# Build artifacts
+*.dll
+*.exe
+*.pdb
+*.cache
+*.log
+
+# Dotnet tooling
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Core secrets
+secrets.json
+
+# Docker artifacts
+**/.dockerignore
+**/Dockerfile.*
+
+# Optional: certs if testing HTTPS
+https/*.pfx
+
+# Logs
+logs/
+*.log
+
+# Test results
+TestResults/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# npm / frontend (if applicable)
+node_modules/
+dist/
+.env
