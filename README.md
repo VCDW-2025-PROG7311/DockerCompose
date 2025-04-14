@@ -66,35 +66,35 @@ At the root (next to API and Client), create a file named `docker-compose.yml`:
 version: '3.8'
 
 services:
-  mathapi:
+  api:
     build:
       context: ./API
       dockerfile: Dockerfile
-    container_name: mathapi
+    container_name: api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
     ports:
       - "5000:80"
     networks:
-      - mathnet
+      - net
 
-  mathapiclient:
+  client:
     build:
       context: ./Client
       dockerfile: Dockerfile
-    container_name: mathapiclient
+    container_name: client
     depends_on:
-      - mathapi
+      - api
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      API_BASE_URL: http://mathapi
+      API_BASE_URL: http://api
     ports:
       - "5001:80"
     networks:
-      - mathnet
+      - net
 
 networks:
-  mathnet:
+  net:
 ```
 
 ### Step 3: Fix Program.cs if needed
