@@ -9,7 +9,7 @@ public class HomeController : Controller
     private readonly HttpClient _httpClient;
     public HomeController(IHttpClientFactory clientFactory)
     {
-        _httpClient = clientFactory.CreateClient("MathAPI");
+        _httpClient = clientFactory.CreateClient("API");
     }
 
     public async Task<IActionResult> Index()

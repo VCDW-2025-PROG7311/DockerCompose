@@ -3,7 +3,7 @@ var builder = WebApplication.CreateBuilder(args);
 var apiBaseUrl = builder.Configuration["API_BASE_URL"] ?? "http://localhost:5000";
 
 builder.Services.AddControllersWithViews();
-builder.Services.AddHttpClient("MathAPI", client =>
+builder.Services.AddHttpClient("API", client =>
 {
     client.BaseAddress = new Uri(apiBaseUrl);
 });
