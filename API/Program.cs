@@ -1,3 +1,8 @@
+using API.Models;
+using API.Data;
+using Microsoft.EntityFrameworkCore;
+
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -8,6 +13,15 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.ListenAnyIP(80); // ← This forces it to bind correctly inside Docker
 });
+
+var connectionString = builder.Configuration["DB_CONNECTION_STRING"];
+
+builder.Services.AddDbContext<ForecastDbContext>(options =>
+    options.UseSqlServer(connectionString,
+        sql => sql.EnableRetryOnFailure(5, TimeSpan.FromSeconds(10), null)
+    )
+);
+
 
 var app = builder.Build();
 
@@ -20,29 +34,27 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
+app.MapGet("/weatherforecast", async (ForecastDbContext db) =>
 {
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+    return await db.WeatherForecasts.OrderByDescending(f => f.Date).ToListAsync();
+});
 
-app.MapGet("/weatherforecast", () =>
+app.MapPost("/weatherforecast/generate", async (ForecastDbContext db) =>
 {
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
+    var summaries = new[] { "Freezing", "Chilly", "Mild", "Warm", "Hot" };
+
+    var forecasts = Enumerable.Range(1, 5).Select(i =>
         new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
+        {
+            Date = DateOnly.FromDateTime(DateTime.Now.AddDays(i)),
+            TemperatureC = Random.Shared.Next(-20, 55),
+            Summary = summaries[Random.Shared.Next(summaries.Length)]
+        }).ToList();
+
+    await db.WeatherForecasts.AddRangeAsync(forecasts);
+    await db.SaveChangesAsync();
+
+    return Results.Ok(forecasts);
+});
 
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

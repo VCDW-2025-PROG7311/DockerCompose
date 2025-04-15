@@ -1,8 +1,12 @@
 ﻿@model List<Client.Models.WeatherForecast>
 
-<h1>Weather Forecast</h1>
+<h2>Weather Forecast History</h2>
 
-<table class="table table-striped">
+<form method="post" asp-action="Generate">
+    <button type="submit" class="btn btn-primary">Generate Forecasts</button>
+</form>
+
+<table class="table mt-4">
     <thead>
         <tr>
             <th>Date</th>

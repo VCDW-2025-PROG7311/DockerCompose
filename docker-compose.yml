@@ -1,13 +1,43 @@
 version: '3.8'
 
 services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: db
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${DB_SA_PASSWORD}
+    ports:
+      - "1433:1433"
+    networks:
+      - net
+    volumes:
+      - dbdata:/var/opt/mssql
+
+  db-setup:
+    image: mcr.microsoft.com/mssql-tools
+    depends_on:
+      - db
+    entrypoint: >
+      bash -c "
+        sleep 20 &&
+        /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${DB_SA_PASSWORD} -i /scripts/init.sql
+      "
+    volumes:
+      - ./db-init:/scripts
+    networks:
+      - net
+
   api:
     build:
       context: ./API
       dockerfile: Dockerfile
     container_name: api
+    depends_on:
+      - db
     environment:
       ASPNETCORE_ENVIRONMENT: Development
+      DB_CONNECTION_STRING: ${API_DB_CONNECTION_STRING}
     ports:
       - "5000:80"
     networks:
@@ -30,3 +60,6 @@ services:
 
 networks:
   net:
+
+volumes:
+  dbdata:

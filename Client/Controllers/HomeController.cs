@@ -6,15 +6,23 @@ namespace Client.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly HttpClient _httpClient;
-    public HomeController(IHttpClientFactory clientFactory)
+    private readonly HttpClient _http;
+
+    public HomeController(IHttpClientFactory factory)
     {
-        _httpClient = clientFactory.CreateClient("API");
+        _http = factory.CreateClient("API");
     }
 
     public async Task<IActionResult> Index()
     {
-        var forecasts = await _httpClient.GetFromJsonAsync<List<WeatherForecast>>("weatherforecast");
+        var forecasts = await _http.GetFromJsonAsync<List<WeatherForecast>>("weatherforecast");
         return View(forecasts);
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Generate()
+    {
+        await _http.PostAsync("weatherforecast/generate", null);
+        return RedirectToAction("Index");
     }
 }
