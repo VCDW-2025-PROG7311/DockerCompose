@@ -44,8 +44,6 @@ Add `.env` to `.gitignore` so it's not committed:
 ## Update `docker-compose.yml`
 
 ```yaml
-version: '3.8'
-
 services:
   db:
     image: mcr.microsoft.com/mssql/server:2022-latest
@@ -59,14 +57,19 @@ services:
       - net
     volumes:
       - dbdata:/var/opt/mssql
+    healthcheck:
+      test: ["CMD", "bash", "-c", "echo > /dev/tcp/localhost/1433"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   db-setup:
     image: mcr.microsoft.com/mssql-tools
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     entrypoint: >
       bash -c "
-        sleep 20 &&
         /opt/mssql-tools/bin/sqlcmd -S db -U sa -P ${DB_SA_PASSWORD} -i /scripts/init.sql
       "
     volumes:
@@ -80,7 +83,7 @@ services:
       dockerfile: Dockerfile
     container_name: api
     depends_on:
-      - db
+      - db-setup
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       DB_CONNECTION_STRING: ${API_DB_CONNECTION_STRING}
@@ -109,6 +112,7 @@ networks:
 
 volumes:
   dbdata:
+
 ```
 
 ### Add in `db-init/init.sql`
