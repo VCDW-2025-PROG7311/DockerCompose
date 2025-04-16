@@ -2,9 +2,9 @@ name: Docker Compose Build and Init Pipeline
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "sql" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "sql" ]
 
 jobs:
   docker-compose:
