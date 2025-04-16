@@ -1,0 +1,37 @@
+name: Docker Compose Build and Init Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  docker-compose:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:24.0.5
+        options: --privileged
+
+    steps:
+    - name: Checkout Code
+      uses: actions/checkout@v3
+
+    - name: Set up Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install docker-compose -y
+
+    - name: Create .env file
+      run: |
+        echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
+        echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
+
+    - name: Run Docker Compose
+      run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
+
+    - name: Shut down Docker Compose
+      if: always()
+      run: docker-compose -f docker-compose.yml down -v
