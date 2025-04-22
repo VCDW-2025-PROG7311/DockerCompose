@@ -16,3 +16,6 @@ extended_capitalisation_policy = consistent
 
 [sqlfluff:rules:references.quoting]
 forbidden_quotes = none
+
+[sqlfluff:rules:AM04]
+allow_select_star = true
