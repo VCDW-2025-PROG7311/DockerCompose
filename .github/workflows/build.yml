@@ -141,6 +141,11 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
+      - name: Create .env file
+        run: |
+          echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
+          echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
+
       - name: Set up Docker Compose
         run: |
           sudo apt-get update
