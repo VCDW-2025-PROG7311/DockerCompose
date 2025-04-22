@@ -1,134 +1,172 @@
 
 ### Docker Compose Build, Init, and Security Pipeline (with Stages)
 
-This guide explains the staged version of the pipeline.
+This guide contains the staged version of the pipeline.
 
-### Stage 1: Checkout and Setup
-
-```yaml
-- name: Checkout Code
-  uses: actions/checkout@v3
-
-- name: Set up Docker Compose
-  run: |
-    sudo apt-get update
-    sudo apt-get install docker-compose -y
-
-- name: Create .env file
-  run: |
-    echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
-    echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
 ```
+name: Docker Compose Build, Init, and Security Pipeline (Staged)
 
-### Stage 2: Security Scans
+on:
+  push:
+    branches: ["sql"]
+  pull_request:
+    branches: ["sql"]
 
-```yaml
-- name: Install Gitleaks
-  run: |
-    curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o gitleaks.tar.gz
-    tar -xzf gitleaks.tar.gz
-    chmod +x gitleaks
-    sudo mv gitleaks /usr/local/bin/gitleaks
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-- name: Run Gitleaks Scan and Display Results
-  run: |
-    gitleaks detect --source . --no-git --report-format json --report-path gitleaks-report.json || true
-    echo "================= Gitleaks Report ================="
-    cat gitleaks-report.json | jq .
-    echo "==================================================="
-```
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install docker-compose -y
 
-### Stage 3: Docker Image Security
+      - name: Create .env file
+        run: |
+          echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
+          echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
 
-```yaml
-- name: Install Trivy
-  run: |
-    sudo apt-get install wget apt-transport-https gnupg lsb-release -y
-    wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-    echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-    sudo apt-get update
-    sudo apt-get install trivy -y
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-- name: Run Trivy vulnerability scan
-  run: |
-    trivy image mcr.microsoft.com/mssql/server:2022-latest
-    trivy image mcr.microsoft.com/mssql-tools
-    trivy image dockercompose-api || true
-    trivy image dockercompose-client || true
-```
+  security-scans:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-### Stage 4: Dockerfile Linting
+      - name: Install Gitleaks
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.3/gitleaks_8.24.3_linux_x64.tar.gz -o gitleaks.tar.gz
+          tar -xzf gitleaks.tar.gz
+          chmod +x gitleaks
+          sudo mv gitleaks /usr/local/bin/gitleaks
 
-```yaml
-- name: Install Hadolint
-  run: |
-    sudo wget -O /bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
-    sudo chmod +x /bin/hadolint
+      - name: Run Gitleaks Scan and Display Results
+        run: |
+          gitleaks detect --source . --no-git --report-format json --report-path gitleaks-report.json || true
+          echo "================= Gitleaks Report ================="
+          cat gitleaks-report.json | jq .
+          echo "==================================================="
 
-- name: Lint API Dockerfile
-  run: hadolint ./API/Dockerfile
+      - name: Install Trivy for vulnerability scanning
+        run: |
+          sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update
+          sudo apt-get install trivy -y
 
-- name: Lint Client Dockerfile
-  run: hadolint ./Client/Dockerfile
-```
+      - name: Run Trivy vulnerability scan on Docker images
+        run: |
+          trivy image mcr.microsoft.com/mssql/server:2022-latest
+          trivy image mcr.microsoft.com/mssql-tools
+          trivy image dockercompose-api || true
+          trivy image dockercompose-client || true
 
-### Stage 5: Build and Static Code Analysis (.NET)
+  lint-and-format:
+    runs-on: ubuntu-latest
+    needs: setup
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-```yaml
-- name: Setup .NET
-  uses: actions/setup-dotnet@v4
-  with:
-    dotnet-version: '8.0.x'
+      - name: Install Hadolint
+        run: |
+          sudo wget -O /bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+          sudo chmod +x /bin/hadolint
 
-- name: Restore API Dependencies
-  working-directory: ./API
-  run: dotnet restore
+      - name: Lint API Dockerfile
+        run: hadolint ./API/Dockerfile
 
-- name: Restore Client Dependencies
-  working-directory: ./Client
-  run: dotnet restore
+      - name: Lint Client Dockerfile
+        run: hadolint ./Client/Dockerfile
 
-- name: Build API
-  working-directory: ./API
-  run: dotnet build --no-restore --configuration Release
+      - name: Restore API Dependencies
+        working-directory: ./API
+        run: dotnet restore
 
-- name: Build Client
-  working-directory: ./Client
-  run: dotnet build --no-restore --configuration Release
+      - name: Restore Client Dependencies
+        working-directory: ./Client
+        run: dotnet restore
 
-- name: Run Static Code Analysis (API)
-  working-directory: ./API
-  run: dotnet format --verify-no-changes --severity error
+      - name: Run .NET Static Analysis (API)
+        working-directory: ./API
+        run: dotnet format --verify-no-changes --severity error
 
-- name: Run Static Code Analysis (Client)
-  working-directory: ./Client
-  run: dotnet format --verify-no-changes --severity error
-```
+      - name: Run .NET Static Analysis (Client)
+        working-directory: ./Client
+        run: dotnet format --verify-no-changes --severity error
 
-### Stage 6: Dependency Vulnerability Scans (.NET)
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint-and-format, security-scans]
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
 
-```yaml
-- name: Dependency Vulnerability Scan (API)
-  working-directory: ./API
-  run: dotnet list package --vulnerable
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
 
-- name: Dependency Vulnerability Scan (Client)
-  working-directory: ./Client
-  run: dotnet list package --vulnerable
-```
+      - name: Restore API Dependencies
+        working-directory: ./API
+        run: dotnet restore
 
-### Stage 7: Docker Compose Up & Down
+      - name: Restore Client Dependencies
+        working-directory: ./Client
+        run: dotnet restore
 
-```yaml
-- name: Run Docker Compose
-  run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
+      - name: Build API
+        working-directory: ./API
+        run: dotnet build --no-restore --configuration Release
 
-- name: Shut Down Docker Compose
-  if: always()
-  run: docker-compose -f docker-compose.yml down -v
+      - name: Build Client
+        working-directory: ./Client
+        run: dotnet build --no-restore --configuration Release
+
+      - name: Run .NET Dependency Vulnerability Scans (API)
+        working-directory: ./API
+        run: dotnet list package --vulnerable
+
+      - name: Run .NET Dependency Vulnerability Scans (Client)
+        working-directory: ./Client
+        run: dotnet list package --vulnerable
+
+  docker-compose:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Create .env file
+        run: |
+          echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
+          echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
+
+      - name: Set up Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install docker-compose -y
+
+      - name: Run Docker Compose
+        run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
+
+      - name: Shut down Docker Compose
+        if: always()
+        run: docker-compose -f docker-compose.yml down -v
 ```
 
 ### Notes
 - Make sure secrets are added in GitHub repository settings.
 - Fix any vulnerabilities and secrets if found.
 - Good formatting and dependency management are crucial for security and stability.
+- Try out SonarQube on your own.
