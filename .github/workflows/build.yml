@@ -38,10 +38,11 @@ jobs:
       
     - name: Run Gitleaks Scan and Display Results
       run: |
-        ./gitleaks detect --source . --no-git --report-format json --report-path gitleaks-report.json || true
+        gitleaks detect --source . --no-git --report-format json --report-path gitleaks-report.json || true
         echo "================= Gitleaks Report ================="
         cat gitleaks-report.json | jq .
         echo "==================================================="
+      
 
     - name: Install Trivy for vulnerability scanning
       run: |
