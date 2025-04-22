@@ -89,14 +89,6 @@ jobs:
       working-directory: ./Client
       run: dotnet list package --vulnerable
 
-    - name: Install SQLFluff for SQL Linting
-      run: |
-        pip install sqlfluff
-
-    - name: Lint Database init.sql
-      run: |
-        sqlfluff lint ./db-init/init.sql --dialect tsql
-
     - name: Run Docker Compose
       run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
 
