@@ -29,13 +29,14 @@ jobs:
         echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
         echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
 
-    - name: Install Gitleaks for secret scanning
+    - name: Install Gitleaks
       run: |
-        curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+        curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64.tar.gz -o gitleaks.tar.gz
+        tar -xvzf gitleaks.tar.gz
         chmod +x gitleaks
         sudo mv gitleaks /usr/local/bin/
-  
-    - name: Run Gitleaks scan
+      
+    - name: Run Gitleaks Scan
       run: |
         gitleaks detect --source . --no-git --report-path gitleaks-report.json || true
 
