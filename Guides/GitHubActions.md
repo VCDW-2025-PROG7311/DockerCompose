@@ -1,49 +1,27 @@
 
-### Docker Compose Build, Init, and Security Pipeline
+### Docker Compose Build, Init, and Security Pipeline (with Stages)
 
-This guide helps you integrate security scans and build steps into your GitHub Actions pipeline.
+This guide explains the staged version of the pipeline.
 
----
+### Stage 1: Checkout and Setup
 
-### 1. Trigger the Pipeline
-
-The workflow triggers on:
-```yaml
-on:
-  push:
-    branches: [ "sql" ]
-  pull_request:
-    branches: [ "sql" ]
-```
-Every push or PR to the `sql` branch will run the pipeline.
-
----
-
-### 2. Checkout Code
-
-Checkout your repository first:
 ```yaml
 - name: Checkout Code
   uses: actions/checkout@v3
-```
 
----
+- name: Set up Docker Compose
+  run: |
+    sudo apt-get update
+    sudo apt-get install docker-compose -y
 
-### 3. Set Up .env File
-
-Create environment variables needed at runtime:
-```yaml
 - name: Create .env file
   run: |
     echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
     echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
 ```
 
----
+### Stage 2: Security Scans
 
-### 4. Secret Scanning with Gitleaks
-
-Install and run Gitleaks:
 ```yaml
 - name: Install Gitleaks
   run: |
@@ -59,13 +37,9 @@ Install and run Gitleaks:
     cat gitleaks-report.json | jq .
     echo "==================================================="
 ```
-Purpose: Detect any hardcoded secrets or credentials.
 
----
+### Stage 3: Docker Image Security
 
-### 5. Vulnerability Scanning with Trivy
-
-Install and scan Docker images for vulnerabilities:
 ```yaml
 - name: Install Trivy
   run: |
@@ -82,13 +56,9 @@ Install and scan Docker images for vulnerabilities:
     trivy image dockercompose-api || true
     trivy image dockercompose-client || true
 ```
-Purpose: Find vulnerabilities in Docker images.
 
----
+### Stage 4: Dockerfile Linting
 
-### 6. Lint Dockerfiles with Hadolint
-
-Check Dockerfile best practices:
 ```yaml
 - name: Install Hadolint
   run: |
@@ -101,27 +71,15 @@ Check Dockerfile best practices:
 - name: Lint Client Dockerfile
   run: hadolint ./Client/Dockerfile
 ```
-Purpose: Improve Dockerfile quality and security.
 
----
+### Stage 5: Build and Static Code Analysis (.NET)
 
-### 7. Setup .NET
-
-Prepare for build and analysis:
 ```yaml
 - name: Setup .NET
   uses: actions/setup-dotnet@v4
   with:
     dotnet-version: '8.0.x'
-```
-Purpose: Install .NET SDK.
 
----
-
-### 8. Restore Dependencies
-
-Restore NuGet packages:
-```yaml
 - name: Restore API Dependencies
   working-directory: ./API
   run: dotnet restore
@@ -129,63 +87,45 @@ Restore NuGet packages:
 - name: Restore Client Dependencies
   working-directory: ./Client
   run: dotnet restore
-```
 
----
-
-### 9. Build and Analyze Code
-
-Compile and verify code formatting:
-```yaml
-- name: .NET Build (API and Client)
+- name: Build API and Client
   run: |
     dotnet build ./API --no-restore --configuration Release
     dotnet build ./Client --no-restore --configuration Release
 
-- name: Run .NET Static Analysis (API)
+- name: Run Static Code Analysis (API)
   working-directory: ./API
   run: dotnet format --verify-no-changes --severity error
 
-- name: Run .NET Static Analysis (Client)
+- name: Run Static Code Analysis (Client)
   working-directory: ./Client
   run: dotnet format --verify-no-changes --severity error
 ```
 
----
-
-### 10. Check .NET Package Vulnerabilities
+### Stage 6: Dependency Vulnerability Scans (.NET)
 
 ```yaml
-- name: Run .NET Dependency Vulnerability Scans (API)
+- name: Dependency Vulnerability Scan (API)
   working-directory: ./API
   run: dotnet list package --vulnerable
 
-- name: Run .NET Dependency Vulnerability Scans (Client)
+- name: Dependency Vulnerability Scan (Client)
   working-directory: ./Client
   run: dotnet list package --vulnerable
 ```
-Purpose: Find outdated or insecure dependencies.
 
----
+### Stage 7: Docker Compose Up & Down
 
-### 11. Run Docker Compose
-
-Spin up all containers and test:
 ```yaml
 - name: Run Docker Compose
   run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
-```
-Shutdown after build:
-```yaml
-- name: Shut down Docker Compose
+
+- name: Shut Down Docker Compose
   if: always()
   run: docker-compose -f docker-compose.yml down -v
 ```
 
----
-
-### Final Tips
-- Always run security and quality checks before merging.
-- Fix any real leaks or vulnerabilities found.
-- Understand that some Gitleaks warnings might be false positives (e.g., Markdown links).
-
+### Notes
+- Make sure secrets are added in GitHub repository settings.
+- Fix any vulnerabilities and secrets if found.
+- Good formatting and dependency management are crucial for security and stability.
