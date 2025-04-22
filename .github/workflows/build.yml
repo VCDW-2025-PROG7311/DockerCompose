@@ -1,4 +1,4 @@
-name: Docker Compose Build and Init Pipeline
+name: Docker Compose Build, Init, and Security Pipeline
 
 on:
   push:
@@ -7,7 +7,7 @@ on:
     branches: [ "sql" ]
 
 jobs:
-  docker-compose:
+  build-and-secure:
     runs-on: ubuntu-latest
 
     services:
@@ -28,6 +28,74 @@ jobs:
       run: |
         echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
         echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
+
+    - name: Install Trivy for vulnerability scanning
+      run: |
+        sudo apt-get install wget apt-transport-https gnupg lsb-release -y
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy -y
+
+    - name: Run Trivy vulnerability scan on Docker images
+      run: |
+        trivy image mcr.microsoft.com/mssql/server:2022-latest
+        trivy image mcr.microsoft.com/mssql-tools
+        trivy image dockercompose-api || true
+        trivy image dockercompose-client || true
+
+    - name: Install Hadolint for Dockerfile linting
+      run: |
+        sudo wget -O /bin/hadolint https://github.com/hadolint/hadolint/releases/latest/download/hadolint-Linux-x86_64
+        sudo chmod +x /bin/hadolint
+
+    - name: Lint API Dockerfile
+      run: hadolint ./API/Dockerfile
+
+    - name: Lint Client Dockerfile
+      run: hadolint ./Client/Dockerfile
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore API Dependencies
+      working-directory: ./API
+      run: dotnet restore
+
+    - name: Restore Client Dependencies
+      working-directory: ./Client
+      run: dotnet restore
+
+    - name: .NET Build (API and Client)
+      run: |
+        dotnet build ./API --no-restore --configuration Release
+        dotnet build ./Client --no-restore --configuration Release
+
+    - name: Run .NET Static Analysis (API)
+      working-directory: ./API
+      run: dotnet format --verify-no-changes --severity error
+
+    - name: Run .NET Static Analysis (Client)
+      working-directory: ./Client
+      run: dotnet format --verify-no-changes --severity error
+
+    - name: Run .NET Dependency Vulnerability Scans (API)
+      working-directory: ./API
+      run: dotnet list package --vulnerable
+
+    - name: Run .NET Dependency Vulnerability Scans (Client)
+      working-directory: ./Client
+      run: dotnet list package --vulnerable
+
+    - name: Install SQLFluff for SQL Linting
+      run: |
+        pip install sqlfluff
+
+    - name: Lint Database init.sql
+      run: |
+        sqlfluff lint ./db-init/init.sql --dialect tsql
 
     - name: Run Docker Compose
       run: docker-compose -f docker-compose.yml up --build --abort-on-container-exit
