@@ -40,6 +40,13 @@ jobs:
       run: |
         gitleaks detect --source . --no-git --report-path gitleaks-report.json || true
 
+    - name: Upload Gitleaks Report
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: gitleaks-report
+        path: gitleaks-report.json
+
     - name: Install Trivy for vulnerability scanning
       run: |
         sudo apt-get install wget apt-transport-https gnupg lsb-release -y
