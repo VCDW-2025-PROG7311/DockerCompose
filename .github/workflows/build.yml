@@ -29,6 +29,16 @@ jobs:
         echo "DB_SA_PASSWORD=${{ secrets.DB_SA_PASSWORD }}" >> .env
         echo "API_DB_CONNECTION_STRING=${{ secrets.API_DB_CONNECTION_STRING }}" >> .env
 
+    - name: Install Gitleaks for secret scanning
+      run: |
+        curl -sSL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks-linux-amd64 -o gitleaks
+        chmod +x gitleaks
+        sudo mv gitleaks /usr/local/bin/
+  
+    - name: Run Gitleaks scan
+      run: |
+        gitleaks detect --source . --no-git --report-path gitleaks-report.json || true
+
     - name: Install Trivy for vulnerability scanning
       run: |
         sudo apt-get install wget apt-transport-https gnupg lsb-release -y
