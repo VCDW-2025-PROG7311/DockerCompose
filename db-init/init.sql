@@ -9,7 +9,7 @@ GO
 
 IF NOT EXISTS (
     SELECT
-        *
+        1
     FROM
         SYSOBJECTS
     WHERE
@@ -21,7 +21,7 @@ BEGIN
         ID INT PRIMARY KEY IDENTITY (1, 1),
         DATE DATE NOT NULL,
         TEMPERATUREC INT NOT NULL,
-        SUMMARY NVARCHAR(100) NULL
+        [SUMMARY] NVARCHAR(100) NULL
     );
 END;
 GO
