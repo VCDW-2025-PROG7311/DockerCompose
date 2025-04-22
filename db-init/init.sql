@@ -1,27 +1,19 @@
-IF DB_ID('WEATHER_DB') IS NULL
+IF DB_ID('Weather_DB') IS NULL
 BEGIN
-    CREATE DATABASE WEATHER_DB;
-END;
+    CREATE DATABASE Weather_DB;
+END
 GO
 
-USE WEATHER_DB;
+USE Weather_DB;
 GO
 
-IF NOT EXISTS (
-    SELECT
-        1
-    FROM
-        SYSOBJECTS
-    WHERE
-        NAME = 'WEATHERFORECASTS'
-        AND XTYPE = 'U'
-)
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='WeatherForecasts' AND xtype='U')
 BEGIN
-    CREATE TABLE WEATHERFORECASTS (
-        ID INT PRIMARY KEY IDENTITY (1, 1),
-        DATE DATE NOT NULL,
-        TEMPERATUREC INT NOT NULL,
-        [SUMMARY] NVARCHAR(100) NULL
+    CREATE TABLE WeatherForecasts (
+        Id INT PRIMARY KEY IDENTITY(1,1),
+        Date DATE NOT NULL,
+        TemperatureC INT NOT NULL,
+        Summary NVARCHAR(100) NULL
     );
-END;
+END
 GO
