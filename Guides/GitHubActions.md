@@ -88,10 +88,13 @@ This guide explains the staged version of the pipeline.
   working-directory: ./Client
   run: dotnet restore
 
-- name: Build API and Client
-  run: |
-    dotnet build ./API --no-restore --configuration Release
-    dotnet build ./Client --no-restore --configuration Release
+- name: Build API
+  working-directory: ./API
+  run: dotnet build --no-restore --configuration Release
+
+- name: Build Client
+  working-directory: ./Client
+  run: dotnet build --no-restore --configuration Release
 
 - name: Run Static Code Analysis (API)
   working-directory: ./API
