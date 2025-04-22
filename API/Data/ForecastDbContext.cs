@@ -7,7 +7,7 @@ namespace API.Data
     {
         public ForecastDbContext(DbContextOptions<ForecastDbContext> options) : base(options) { }
 
-                public DbSet<WeatherForecast> WeatherForecasts { get; set; } // ✅ matches public model
+        public DbSet<WeatherForecast> WeatherForecasts { get; set; } // ✅ matches public model
 
     }
 }
