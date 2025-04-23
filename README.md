@@ -1,5 +1,5 @@
 
-## Dockerizing MathApp with Docker Compose
+## Dockerizing Weather with Docker Compose
 We will now containerize a simple default weather forecast API and a client for it, and run them together using Docker Compose. 
 
 ### Prerequisites
