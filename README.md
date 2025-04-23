@@ -1,4 +1,4 @@
-## Dockerizing MathApp with Docker Compose
+## Dockerizing Weather app with Docker Compose
 We will now containerize a simple default weather forecast API and a client for it, and run them together using Docker Compose. 
 
 1. Start here with no SQL DB: [click here](/Guides/DockerizingWithoutSql.md).
